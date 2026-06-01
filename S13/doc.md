@@ -1,4 +1,4 @@
-# Вариант 13 — Work Program Service (Сервис рабочих программ)
+# S13 — Work Program Service (Сервис рабочих программ)
 
 Сервис управляет рабочими программами дисциплин: хранит метаданные, путь к файлу, версию и год утверждения. Программа привязывается к дисциплине и может использоваться в нескольких специальностях. **Не хранит** сами дисциплины и специальности — они управляются Discipline Service и Specialty Service.
 
@@ -34,8 +34,9 @@
 | file_path     | string или null   |
 | description   | string или null   |
 | is_active     | boolean           |
-| created_at    | string |
-| updated_at    | string |
+| specialties   | list              |
+| created_at    | string            |
+| updated_at    | string            |
 
 ---
 
@@ -66,8 +67,9 @@
 | file_path     | string или null   |
 | description   | string или null   |
 | is_active     | boolean           |
-| created_at    | string |
-| updated_at    | string |
+| specialties   | list              |
+| created_at    | string            |
+| updated_at    | string            |
 
 ---
 
