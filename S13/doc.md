@@ -1,4 +1,4 @@
-# S13 — Work Program Service (Сервис рабочих программ)
+# Вариант 13 — Work Program Service (Сервис рабочих программ)
 
 Сервис управляет рабочими программами дисциплин: хранит метаданные, путь к файлу, версию и год утверждения. Программа привязывается к дисциплине и может использоваться в нескольких специальностях. **Не хранит** сами дисциплины и специальности — они управляются Discipline Service и Specialty Service.
 
@@ -34,8 +34,8 @@
 | file_path     | string или null   |
 | description   | string или null   |
 | is_active     | boolean           |
-| created_at    | string (ISO 8601) |
-| updated_at    | string (ISO 8601) |
+| created_at    | string |
+| updated_at    | string |
 
 ---
 
@@ -66,8 +66,8 @@
 | file_path     | string или null   |
 | description   | string или null   |
 | is_active     | boolean           |
-| created_at    | string (ISO 8601) |
-| updated_at    | string (ISO 8601) |
+| created_at    | string |
+| updated_at    | string |
 
 ---
 
@@ -91,8 +91,8 @@
 | description   | Описание                     | string или null   |
 | is_active     | Активна ли программа         | boolean           |
 | specialties   | Список ID привязанных специальностей | list    |
-| created_at    | Дата создания                | string (ISO 8601) |
-| updated_at    | Дата последнего изменения    | string (ISO 8601) |
+| created_at    | Дата создания                | string |
+| updated_at    | Дата последнего изменения    | string |
 
 ---
 
@@ -119,8 +119,8 @@
 | approved_year | integer           |
 | file_name     | string или null   |
 | is_active     | boolean           |
-| created_at    | string (ISO 8601) |
-| updated_at    | string (ISO 8601) |
+| created_at    | string |
+| updated_at    | string |
 
 ---
 
@@ -167,18 +167,4 @@
 
 ## ER-диаграмма
 
-> Файл диаграммы: `erd.drawio` (открывается в [draw.io](https://app.diagrams.net/))
-
-![ERD](erd.drawio)
-
-```
-Discipline  ──< WorkProgram                           (одна дисциплина — много программ)
-WorkProgram >──< Specialty  через WorkProgramSpecialty (многие ко многим)
-```
-
-| Таблица                | Назначение                                                               |
-|------------------------|--------------------------------------------------------------------------|
-| Discipline             | Заглушка: дисциплина (управляется Discipline Service)                    |
-| Specialty              | Заглушка: специальность (управляется Specialty Service)                  |
-| WorkProgram            | Основная сущность: рабочая программа с метаданными и путём к файлу       |
-| WorkProgramSpecialty   | Транзитивная таблица: привязка программ к специальностям (многие ко многим) |
+![ER-диаграмма](erd.png)
