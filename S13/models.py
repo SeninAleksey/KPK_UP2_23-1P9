@@ -17,7 +17,7 @@ class WorkProgram(BaseModel):
     discipline_id — внешний ID из Discipline Service, не хранится локально.
     Валидация существования discipline_id выполняется на уровне сервиса."""
     id = AutoField(primary_key=True)
-    title = CharField(max_length=255, constraints=[Check("length(title) >=1 ")])
+    title = CharField(max_length=255, constraints=[Check("length(title) >= 1")])
     discipline_id = IntegerField()
     file_path = CharField(max_length=500, null=True)
     file_name = CharField(max_length=255, null=True)
@@ -35,8 +35,8 @@ class WorkProgram(BaseModel):
         )
 
     def save(self, *args, **kwargs):
-        # updated_at обновляется только при изменении, не при создании
-        if self._pk is not None:
+        # updated_at обновляется только при изменении существующей записи
+        if self.id is not None:
             self.updated_at = datetime.now()
         return super().save(*args, **kwargs)
 
@@ -51,10 +51,11 @@ class WorkProgram(BaseModel):
 
     def get_specialties(self):
         """Получить список ID специальностей привязанных к программе."""
-        return list(
-            WorkProgramSpecialty.select()
+        return [
+            row.specialty_id
+            for row in WorkProgramSpecialty.select()
             .where(WorkProgramSpecialty.work_program == self)
-        )
+        ]
 
 
 class WorkProgramSpecialty(BaseModel):
