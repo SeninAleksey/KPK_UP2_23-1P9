@@ -14,7 +14,8 @@ class BaseModel(Model):
 
 class WorkProgram(BaseModel):
     """Основная сущность: рабочая программа дисциплины.
-    discipline_id — внешний ID из Discipline Service, не хранится локально."""
+    discipline_id — внешний ID из Discipline Service, не хранится локально.
+    Валидация существования discipline_id выполняется на уровне сервиса."""
     id = AutoField(primary_key=True)
     title = CharField(max_length=255, constraints=[Check("length(title) >= 1")])
     discipline_id = IntegerField()
@@ -34,21 +35,32 @@ class WorkProgram(BaseModel):
         )
 
     def save(self, *args, **kwargs):
-        self.updated_at = datetime.now()
+        # updated_at обновляется только при изменении, не при создании
+        if self._pk is not None:
+            self.updated_at = datetime.now()
         return super().save(*args, **kwargs)
 
     @classmethod
     def soft_delete(cls, work_program_id):
-        """Мягкое удаление: is_active = False. Возвращает True если деактивировано, иначе False."""
+        """Мягкое удаление: is_active = False.
+        Возвращает True если деактивировано, иначе False."""
         updated = cls.update(is_active=False).where(
             (cls.id == work_program_id) & (cls.is_active == True)
         ).execute()
-        return updated > 0
+        return bool(updated > 0)
+
+    def get_specialties(self):
+        """Получить список ID специальностей привязанных к программе."""
+        return list(
+            WorkProgramSpecialty.select()
+            .where(WorkProgramSpecialty.work_program == self)
+        )
 
 
 class WorkProgramSpecialty(BaseModel):
     """Транзитивная таблица: связь многие ко многим между WorkProgram и Specialty.
-    specialty_id — внешний ID из Specialty Service, не хранится локально."""
+    specialty_id — внешний ID из Specialty Service, не хранится локально.
+    Валидация существования specialty_id выполняется на уровне сервиса."""
     id = AutoField(primary_key=True)
     work_program = ForeignKeyField(WorkProgram, backref='wp_specialties', on_delete='CASCADE')
     specialty_id = IntegerField()
@@ -57,6 +69,29 @@ class WorkProgramSpecialty(BaseModel):
         table_name = 'work_program_specialties'
         indexes = (
             (('work_program', 'specialty_id'), True),
+        )
+
+    @classmethod
+    def attach(cls, work_program_id: int, specialty_id: int):
+        """Привязать специальность к рабочей программе.
+        Возвращает созданную запись."""
+        return cls.create(
+            work_program_id=work_program_id,
+            specialty_id=specialty_id
+        )
+
+    @classmethod
+    def detach(cls, record_id: int):
+        """Отвязать специальность по ID записи о связи.
+        Возвращает True если запись удалена, иначе False."""
+        deleted = cls.delete().where(cls.id == record_id).execute()
+        return bool(deleted > 0)
+
+    @classmethod
+    def get_by_program(cls, work_program_id: int):
+        """Получить список специальностей рабочей программы по ID рабочей программы."""
+        return list(
+            cls.select().where(cls.work_program_id == work_program_id)
         )
 
 
@@ -84,9 +119,9 @@ def init_db():
             approved_year=2024
         )
 
-        WorkProgramSpecialty.create(work_program=wp1, specialty_id=1)
-        WorkProgramSpecialty.create(work_program=wp1, specialty_id=2)
-        WorkProgramSpecialty.create(work_program=wp2, specialty_id=1)
+        WorkProgramSpecialty.attach(wp1.id, 1)
+        WorkProgramSpecialty.attach(wp1.id, 2)
+        WorkProgramSpecialty.attach(wp2.id, 1)
 
 
 if __name__ == '__main__':
