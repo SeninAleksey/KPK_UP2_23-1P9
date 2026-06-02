@@ -1,40 +1,112 @@
+"""
+Модели для базы данных сервиса рабочих программ (Work Program Service)
+Вариант 13, оценка 3
+
+Используемые технологии:
+- peewee ORM
+- sqlite3
+"""
+
+import os
 from datetime import datetime
 from peewee import (
-    SqliteDatabase, Model, AutoField, CharField, IntegerField,
-    ForeignKeyField, DateTimeField, BooleanField, Check
+    SqliteDatabase,
+    Model,
+    AutoField,
+    CharField,
+    IntegerField,
+    BooleanField,
+    ForeignKeyField,
+    DateField,
+    DateTimeField,
 )
 
-db = SqliteDatabase('work_program.db')
+# Путь к файлу базы данных
+DB_PATH = os.path.join(os.path.dirname(__file__), "work_program_service.db")
+
+# Инициализация базы данных SQLite
+database = SqliteDatabase(DB_PATH)
 
 
 class BaseModel(Model):
+    """Базовый класс для всех моделей"""
     class Meta:
-        database = db
+        database = database
+
+
+class Discipline(BaseModel):
+    """
+    Модель дисциплины (внешняя сущность)
+    Хранится в Discipline Service, здесь представлена для связи
+    """
+    id = AutoField(primary_key=True, verbose_name="ID дисциплины")
+    name = CharField(max_length=200, unique=True, verbose_name="Название дисциплины")
+    code = CharField(max_length=20, unique=True, verbose_name="Код дисциплины")
+    is_active = BooleanField(default=True, verbose_name="Активна")
+
+    class Meta:
+        table_name = "discipline"
+        verbose_name = "Дисциплина"
+        verbose_name_plural = "Дисциплины"
+
+
+class Specialty(BaseModel):
+    """
+    Модель специальности (внешняя сущность)
+    Хранится в Specialty Service, здесь представлена для связи
+    """
+    id = AutoField(primary_key=True, verbose_name="ID специальности")
+    name = CharField(max_length=200, unique=True, verbose_name="Название специальности")
+    code = CharField(max_length=20, unique=True, verbose_name="Код специальности")
+    is_active = BooleanField(default=True, verbose_name="Активна")
+
+    class Meta:
+        table_name = "specialty"
+        verbose_name = "Специальность"
+        verbose_name_plural = "Специальности"
 
 
 class WorkProgram(BaseModel):
-    """Основная сущность: рабочая программа дисциплины.
-    discipline_id — внешний ID из Discipline Service, не хранится локально.
-    Валидация существования discipline_id выполняется на уровне сервиса."""
-    id = AutoField(primary_key=True)
-    title = CharField(max_length=255, constraints=[Check("length(title) >= 1")])
-    discipline_id = IntegerField()
-    file_path = CharField(max_length=500, null=True)
-    file_name = CharField(max_length=255, null=True)
-    version = CharField(max_length=20, constraints=[Check("length(version) >= 1")])
-    approved_year = IntegerField(constraints=[Check('approved_year >= 2000')])
-    description = CharField(max_length=1000, null=True)
-    is_active = BooleanField(default=True)
-    created_at = DateTimeField(default=datetime.now)
-    updated_at = DateTimeField(default=datetime.now)
-
-    class Meta:
-        table_name = 'work_programs'
-        indexes = (
-            (('discipline_id', 'version', 'approved_year'), True),
-        )
+    """
+    Модель рабочей программы (основная сущность сервиса)
+    Связывает дисциплину и специальность (реализация many-to-many)
+    """
+    id = AutoField(primary_key=True, verbose_name="ID рабочей программы")
+    
+    # Внешние ключи (NOT NULL)
+    discipline = ForeignKeyField(
+        Discipline,
+        backref="work_programs",
+        on_delete="CASCADE",
+        verbose_name="Дисциплина"
+    )
+    specialty = ForeignKeyField(
+        Specialty,
+        backref="work_programs",
+        on_delete="CASCADE",
+        verbose_name="Специальность"
+    )
+    
+    # Файловые атрибуты
+    file_url = CharField(max_length=500, verbose_name="URL файла")
+    file_name = CharField(max_length=200, verbose_name="Имя файла")
+    file_size = IntegerField(default=0, verbose_name="Размер в КБ")
+    
+    # Версионирование
+    version = CharField(max_length=20, default="1.0", verbose_name="Версия")
+    
+    # Метаданные утверждения
+    approved_by = CharField(max_length=200, null=True, verbose_name="Утвердивший")
+    approval_date = DateField(null=True, verbose_name="Дата утверждения")
+    description = CharField(max_length=1000, default="", verbose_name="Описание")
+    
+    # Системные поля
+    is_active = BooleanField(default=True, verbose_name="Активна")
+    created_at = DateTimeField(default=datetime.now, verbose_name="Дата создания")
+    updated_at = DateTimeField(default=datetime.now, verbose_name="Дата обновления")
 
     def save(self, *args, **kwargs):
+<<<<<<< HEAD
         # updated_at обновляется только при изменении существующей записи
         if self.id is not None:
             self.updated_at = datetime.now()
@@ -88,10 +160,19 @@ class WorkProgramSpecialty(BaseModel):
     id = AutoField(primary_key=True)
     work_program = ForeignKeyField(WorkProgram, backref='wp_specialties', on_delete='CASCADE')
     specialty_id = IntegerField()
+=======
+        """Переопределение save для автоматического обновления updated_at"""
+        self.updated_at = datetime.now()
+        super().save(*args, **kwargs)
+>>>>>>> 5486e8542a3944295f8981f3d5a82c5edc054449
 
     class Meta:
-        table_name = 'work_program_specialties'
+        table_name = "work_program"
+        verbose_name = "Рабочая программа"
+        verbose_name_plural = "Рабочие программы"
+        # Уникальная комбинация: дисциплина + специальность + версия
         indexes = (
+<<<<<<< HEAD
             (('work_program', 'specialty_id'), True),
         )
 
@@ -122,38 +203,30 @@ class WorkProgramSpecialty(BaseModel):
         """Получить список специальностей рабочей программы по ID рабочей программы."""
         return list(
             cls.select().where(cls.work_program_id == work_program_id)
+=======
+            (("discipline", "specialty", "version"), True),
+>>>>>>> 5486e8542a3944295f8981f3d5a82c5edc054449
         )
 
 
 def init_db():
-    """Создание таблиц и заполнение начальными данными"""
-    db.connect()
-    db.create_tables([WorkProgram, WorkProgramSpecialty], safe=True)
-
-    if not WorkProgram.select().exists():
-        wp1 = WorkProgram.create(
-            title='Рабочая программа по Математике',
-            discipline_id=1,
-            file_name='math_wp_v1.pdf',
-            file_path='/programs/math_wp_v1.pdf',
-            version='1.0',
-            approved_year=2024,
-            description='Рабочая программа дисциплины Математика для СПО'
-        )
-        wp2 = WorkProgram.create(
-            title='Рабочая программа МДК 01.01',
-            discipline_id=3,
-            file_name='mdk0101_wp_v2.pdf',
-            file_path='/programs/mdk0101_wp_v2.pdf',
-            version='2.0',
-            approved_year=2024
-        )
-
-        WorkProgramSpecialty.attach(wp1.id, 1)
-        WorkProgramSpecialty.attach(wp1.id, 2)
-        WorkProgramSpecialty.attach(wp2.id, 1)
+    """
+    Функция инициализации базы данных
+    Создает все таблицы, если они не существуют
+    """
+    try:
+        database.connect()
+        # Создание таблиц в правильном порядке (с учетом внешних ключей)
+        database.create_tables([Discipline, Specialty, WorkProgram], safe=True)
+        print("База данных успешно инициализирована")
+        print(f"Файл БД: {DB_PATH}")
+        print("Созданные таблицы: discipline, specialty, work_program")
+    except Exception as e:
+        print(f"Ошибка при инициализации базы данных: {e}")
+    finally:
+        database.close()
 
 
-if __name__ == '__main__':
+# Точка входа для инициализации БД
+if __name__ == "__main__":
     init_db()
-    print("База данных work_program.db успешно инициализирована.")
