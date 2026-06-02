@@ -16,11 +16,11 @@ class WorkProgram(BaseModel):
     """Основная сущность: рабочая программа дисциплины.
     discipline_id — внешний ID из Discipline Service, не хранится локально."""
     id = AutoField(primary_key=True)
-    title = CharField(max_length=255, constraints=[Check("length(title) >=1 "), Check("length(title) <=255 ")])
+    title = CharField(max_length=255, constraints=[Check("length(title) >=1 ")])
     discipline_id = IntegerField()
     file_path = CharField(max_length=500, null=True)
     file_name = CharField(max_length=255, null=True)
-    version = CharField(max_length=20, constraints=[Check("length(version) >= 1"), Check("length(version) <= 20")])
+    version = CharField(max_length=20, constraints=[Check("length(version) >= 1")])
     approved_year = IntegerField(constraints=[Check('approved_year >= 2000')])
     description = CharField(max_length=1000, null=True)
     is_active = BooleanField(default=True)
