@@ -26,8 +26,8 @@ class BaseModel(Model):
 class Discipline(BaseModel):
     """Внешняя сущность — дисциплина из Discipline Service."""
     id = AutoField(primary_key=True)
-    name = CharField(max_length=200, unique=True)
-    code = CharField(max_length=20, unique=True)
+    name = CharField(max_length=200, null=False, unique=True)
+    code = CharField(max_length=20, null=False, unique=True)
     is_active = BooleanField(default=True)
 
     class Meta:
@@ -37,8 +37,8 @@ class Discipline(BaseModel):
 class Specialty(BaseModel):
     """Внешняя сущность — специальность из Specialty Service."""
     id = AutoField(primary_key=True)
-    name = CharField(max_length=200, unique=True)
-    code = CharField(max_length=20, unique=True)
+    name = CharField(max_length=200, null=False, unique=True)
+    code = CharField(max_length=20, null=False, unique=True)
     is_active = BooleanField(default=True)
 
     class Meta:
@@ -51,20 +51,23 @@ class WorkProgram(BaseModel):
     id = AutoField(primary_key=True)
 
     discipline = ForeignKeyField(
-        Discipline, backref="work_programs", on_delete="CASCADE", column_name="discipline_id"
+        Discipline, null=False, backref="work_programs", on_delete="CASCADE", column_name="discipline_id"
     )
     specialty = ForeignKeyField(
-        Specialty, backref="work_programs", on_delete="CASCADE", column_name="specialty_id"
+        Specialty, null=False, backref="work_programs", on_delete="CASCADE", column_name="specialty_id"
     )
 
-    file_url = CharField(max_length=500)
-    file_name = CharField(
-        max_length=200,
-        constraints=[Check("length(file_name) >= 1 AND length(file_name) <= 200")]
-    )
+    file_url = CharField(max_length=500, null=False, constraints=[
+        Check("file_url LIKE 'http://%' OR file_url LIKE 'https://%'")
+    ])
+    file_name = CharField(max_length=200, null=False, constraints=[
+        Check("length(file_name) >= 1")
+    ])
     file_size = IntegerField(default=0, constraints=[Check("file_size >= 0")])
 
-    version = CharField(max_length=20, default="1.0", constraints=[Check("length(version) >= 1")])
+    version = CharField(max_length=20, null=False, default="1.0", constraints=[
+        Check("version GLOB '[0-9]*.[0-9]*'")
+    ])
 
     approved_by = CharField(max_length=200, null=True)
     approval_date = DateField(null=True)
@@ -77,12 +80,11 @@ class WorkProgram(BaseModel):
     class Meta:
         table_name = "work_program"
         indexes = (
-            (("discipline", "specialty", "version"), True),
+            (("discipline_id", "specialty_id", "version"), True),
         )
 
     def save(self, *args, **kwargs):
-        # updated_at обновляется только при изменении существующей записи
-        if self.id is not None:
+        if self.id is not None and self.is_dirty():
             self.updated_at = datetime.now()
         return super().save(*args, **kwargs)
 
@@ -100,9 +102,11 @@ class WorkProgram(BaseModel):
 
     @classmethod
     def get_list(cls, discipline_id=None, specialty_id=None, version=None,
-                 is_active=None, approved_by=None, limit=100, offset=0):
+                 is_active=None, approved_by=None, limit=None, offset=0):
         """Получить список рабочих программ с фильтрацией по параметрам из doc.md."""
-        query = cls.select()
+        query = cls.select(
+            cls.id, cls.discipline, cls.specialty, cls.file_name, cls.version, cls.is_active
+        )
         if discipline_id is not None:
             query = query.where(cls.discipline_id == discipline_id)
         if specialty_id is not None:
@@ -113,11 +117,11 @@ class WorkProgram(BaseModel):
             query = query.where(cls.is_active == is_active)
         if approved_by is not None:
             query = query.where(cls.approved_by.contains(approved_by))
+        offset = max(0, offset)
+        query = query.offset(offset)
         if limit is not None:
-            offset = max(0, offset)
-            query = query.limit(limit).offset(offset)
+            query = query.limit(limit)
         return list(query)
-
 
 
 def init_db():
