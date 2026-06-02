@@ -1,5 +1,4 @@
 import os
-import re
 from datetime import datetime
 from peewee import (
     SqliteDatabase,
@@ -59,7 +58,10 @@ class WorkProgram(BaseModel):
     )
 
     file_url = CharField(max_length=500)
-    file_name = CharField(max_length=200, constraints=[Check("length(file_name) >= 1")])
+    file_name = CharField(
+        max_length=200,
+        constraints=[Check("length(file_name) >= 1 AND length(file_name) <= 200")]
+    )
     file_size = IntegerField(default=0, constraints=[Check("file_size >= 0")])
 
     version = CharField(max_length=20, default="1.0", constraints=[Check("length(version) >= 1")])
@@ -111,19 +113,11 @@ class WorkProgram(BaseModel):
             query = query.where(cls.is_active == is_active)
         if approved_by is not None:
             query = query.where(cls.approved_by.contains(approved_by))
-        limit = max(1, min(100, limit))
-        offset = max(0, offset)
-        return list(query.limit(limit).offset(offset))
+        if limit is not None:
+            offset = max(0, offset)
+            query = query.limit(limit).offset(offset)
+        return list(query)
 
-    @staticmethod
-    def validate_version(version: str) -> bool:
-        """Проверить формат версии X.Y."""
-        return bool(re.match(r'^\d+\.\d+$', version))
-
-    @staticmethod
-    def validate_url(url: str) -> bool:
-        """Проверить что строка является валидным URL."""
-        return url.startswith("http://") or url.startswith("https://")
 
 
 def init_db():
