@@ -44,18 +44,41 @@ class WorkProgram(BaseModel):
     def soft_delete(cls, work_program_id):
         """Мягкое удаление: is_active = False.
         Возвращает True если деактивировано, иначе False."""
-        updated = cls.update(is_active=False).where(
-            (cls.id == work_program_id) & (cls.is_active == True)
-        ).execute()
-        return bool(updated > 0)
+        try:
+            updated = cls.update(is_active=False).where(
+                (cls.id == work_program_id) & (cls.is_active == True)
+            ).execute()
+            return bool(updated > 0)
+        except Exception:
+            return False
 
     def get_specialties(self):
-        """Получить список ID специальностей привязанных к программе."""
-        return [
-            row.specialty_id
-            for row in WorkProgramSpecialty.select()
+        """Получить список специальностей привязанных к программе."""
+        return list(
+            WorkProgramSpecialty.select()
             .where(WorkProgramSpecialty.work_program == self)
-        ]
+        )
+
+    @classmethod
+    def get_list(cls, discipline_id=None, specialty_id=None, approved_year=None,
+                 is_active=None, search=None, limit=100, offset=0):
+        """Получить список рабочих программ с фильтрацией по параметрам."""
+        query = cls.select()
+        if discipline_id is not None:
+            query = query.where(cls.discipline_id == discipline_id)
+        if approved_year is not None:
+            query = query.where(cls.approved_year == approved_year)
+        if is_active is not None:
+            query = query.where(cls.is_active == is_active)
+        if search is not None:
+            query = query.where(cls.title.contains(search))
+        if specialty_id is not None:
+            query = query.join(WorkProgramSpecialty).where(
+                WorkProgramSpecialty.specialty_id == specialty_id
+            )
+        limit = max(1, min(100, limit))
+        offset = max(0, offset)
+        return list(query.limit(limit).offset(offset))
 
 
 class WorkProgramSpecialty(BaseModel):
@@ -76,17 +99,23 @@ class WorkProgramSpecialty(BaseModel):
     def attach(cls, work_program_id: int, specialty_id: int):
         """Привязать специальность к рабочей программе.
         Возвращает созданную запись."""
-        return cls.create(
-            work_program_id=work_program_id,
-            specialty_id=specialty_id
-        )
+        try:
+            return cls.create(
+                work_program_id=work_program_id,
+                specialty_id=specialty_id
+            )
+        except Exception:
+            return None
 
     @classmethod
     def detach(cls, record_id: int):
         """Отвязать специальность по ID записи о связи.
         Возвращает True если запись удалена, иначе False."""
-        deleted = cls.delete().where(cls.id == record_id).execute()
-        return bool(deleted > 0)
+        try:
+            deleted = cls.delete().where(cls.id == record_id).execute()
+            return bool(deleted > 0)
+        except Exception:
+            return False
 
     @classmethod
     def get_by_program(cls, work_program_id: int):
