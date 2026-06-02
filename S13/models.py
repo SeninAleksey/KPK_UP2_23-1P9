@@ -17,7 +17,7 @@ class WorkProgram(BaseModel):
     discipline_id — внешний ID из Discipline Service, не хранится локально.
     Валидация существования discipline_id выполняется на уровне сервиса."""
     id = AutoField(primary_key=True)
-    title = CharField(max_length=255, constraints=[Check("length(title) >= 1")])
+    title = CharField(max_length=255, constraints=[Check("length(title) >=1 ")])
     discipline_id = IntegerField()
     file_path = CharField(max_length=500, null=True)
     file_name = CharField(max_length=255, null=True)
